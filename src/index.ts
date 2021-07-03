@@ -2,12 +2,14 @@
 /* Desired behaviours & features:
  *    Middleware:
  *
- *       ability to process HTTP requests prior to arriving a handler
+ *      [ ] - ability to process HTTP requests prior to arriving a handler
  *
  *
  *    Built-In Parsers
  *
- *      Ability to parse url paths
+ *      [ ] - Ability to parse url paths
+ *      [ ] - Ability to parse query params 
+ *
  *
  *
  *
@@ -18,6 +20,7 @@
  */
 
 
+import { Result, ok, err } from 'neverthrow'
 import { RouteError } from './errors'
 
 
@@ -40,6 +43,8 @@ export interface JSONObject {
   [k: string]: JSONValues
 } 
 
+
+type NonEmptyArray<T> = [T, ...T[]]
 
 
 
@@ -124,7 +129,119 @@ const mapRouteError = (err: RouteError): RouteErrorHttpResponse => {
 export const flecha = () => undefined
 
 const server = flecha()
+  .withRoute()
+  .withRoute()
 
-server.use()
 
 
+
+type PathParseError = 'path_parse_error'
+
+interface PathParser<T extends string | number, P extends string> {
+  tag: 'path_parser'
+  path_name: P,
+  fn: (raw: Record<string, undefined | string>) => Result<T, PathParseError>
+}
+
+type UrlPath = NonEmptyArray<string | PathParser<string, any> | PathParser<number, any>>
+
+
+const str = <P extends string>(pathParamName: P): PathParser<string, P> => {
+  return {
+    tag: 'path_parser',
+    path_name: pathParamName,
+    fn: (rawPathParams) => {
+      const pathParam = rawPathParams[pathParamName]
+
+      if (pathParam) {
+        return ok(pathParam)
+      }
+
+      return err('path_parse_error')
+    }
+  }
+}
+
+
+const int = <P extends string>(pathParamName: P): PathParser<number, P> => {
+  return {
+    tag: 'path_parser',
+    path_name: pathParamName,
+    fn: (rawPathParams) => {
+      const pathParam = rawPathParams[pathParamName]
+
+      if (pathParam) {
+        const BASE_10 = 10
+        const parsedInteger = parseInt(pathParam, BASE_10)
+
+        if (Number.isNaN(parsedInteger)) {
+          return err('path_parse_error')
+        }
+
+        return ok(parsedInteger)
+      }
+
+      return err('path_parse_error')
+    }
+  }
+}
+
+
+type ExtractUrlPathParams<T extends UrlPath[number]> =
+  T extends PathParser<infer U, string>
+    ? { [K in T['path_name']]: U } 
+    : undefined
+
+
+// /todos/:todoId/:weekday
+//
+// todoId parsed as a string
+// weekday parsed as an integer
+const urlPath = [ 'todos', str('todoId'), int('weekday') ] as const
+
+type Params = ExtractUrlPathParams<(typeof urlPath)[number]>
+
+
+type UrlParams <T extends UrlPath> = {
+  [k in UrlPath[number]]
+
+}
+
+const parseUrlPath = (path: UrlPath): UrlParams
+
+
+const cuid = <T extends string>(val: T) => {
+  return val
+}
+
+
+cuid('yo')
+
+
+
+
+
+
+
+
+const addTodo = route({
+  path: [ s 'todos' ],
+  bodyParser: parser,
+  middleware: [ list, of, ordered, functions ]
+}, ({ }) => {
+
+})
+
+const getTodo = route({
+  path: [ 'todos', str 'todoId', int 'age' ],
+  bodyParser: parser,
+  middleware: [ list, of, ordered, functions ]
+}, ({ }) => {
+
+})
+
+
+
+
+
+server.withRoute(addTodo)
