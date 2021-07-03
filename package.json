@@ -1,0 +1,19 @@
+{
+  "name": "flecha",
+  "version": "0.0.1",
+  "description": "Opinionated, functional and typesafe ✨ HTTP server",
+  "main": "src/index.ts",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "http",
+    "FP",
+    "typescript"
+  ],
+  "author": "Giorgio Delgado",
+  "license": "MIT",
+  "dependencies": {
+    "typescript": "^4.3.5"
+  }
+}
