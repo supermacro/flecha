@@ -17,11 +17,30 @@
  *    JSON request bodies only
  *
  *    Hook into existing ExpressJS app
+ *
+ *
+ *    Test Cases:
+ *
+ *      [ ] - as a user I can handle different Authorization checks
+ *          Example:
+ *            - JWT deserialization
+ *            - Simple Authorization
+ *
+ *      [ ] - as a user, I can create middleware that allows me to
+ *            check if the user has permission to access this endpoint
+ *
+ *            Eg. RBAC
  */
 
 
 import { Result, ok, err } from 'neverthrow'
 import { RouteError } from './errors'
+import { z, ZodType } from 'zod'
+
+
+type Decoder<T> = ZodType<T>
+
+
 
 
 /**
@@ -197,17 +216,48 @@ type ExtractUrlPathParams<T extends UrlPath[number]> =
 //
 // todoId parsed as a string
 // weekday parsed as an integer
-const urlPath = [ 'todos', str('todoId'), int('weekday') ] as const
-
-type Params = ExtractUrlPathParams<(typeof urlPath)[number]>
+const urlPath = [ 'todos', str('todoId'), int('weekday') ] 
 
 
-type UrlParams <T extends UrlPath> = {
-  [k in UrlPath[number]]
 
+
+// https://stackoverflow.com/questions/50374908/transform-union-type-to-intersection-type
+type UnionToIntersection<U> =
+  (U extends any ? (k: U) => void : never) extends ((k: infer I) => void)
+    ? I
+    : never
+
+
+type Params = UnionToIntersection<ExtractUrlPathParams<(typeof urlPath)[number]>>
+
+
+
+
+// alternative to using `as const`
+// use this to ensure ExtractUrlPathParams works
+// additionally, wrap UrlPath to prevent users from passing in a array literal into `route`
+const path = <T extends UrlPath>(path: T): { tag: 'url_path', path: T } => ({
+  tag: 'url_path',
+  path,
+}) 
+
+
+
+
+
+
+const urlPath2 = path([ 'todos', str('todoId'), int('weekday') ])
+
+
+
+
+const parseUrlPath = <T extends UrlPath>(path: T, rawRequestUrl: string): ExtractUrlPathParams<T[number]> => {
+
+  return undefined
 }
 
-const parseUrlPath = (path: UrlPath): UrlParams
+
+const yooooo = parseUrlPath(urlPath2, 'duudud')
 
 
 const cuid = <T extends string>(val: T) => {
@@ -218,19 +268,28 @@ const cuid = <T extends string>(val: T) => {
 cuid('yo')
 
 
+interface RouteConfig<B> {
+  parser: Decoder<B>
+}
+ 
+
+const route = <B, T>(
+  { parser, requiredPermissions }: RouteConfig<B>,
 
 
 
 
-
-
-const addTodo = route({
-  path: [ s 'todos' ],
+const addTodo = route(
+  path([ 'todos', str('todoId') ]),
+  noConfig,
   bodyParser: parser,
   middleware: [ list, of, ordered, functions ]
-}, ({ }) => {
+, ({ pathParams, body }) => {
 
 })
+
+
+
 
 const getTodo = route({
   path: [ 'todos', str 'todoId', int 'age' ],
