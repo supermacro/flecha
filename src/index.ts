@@ -11,12 +11,13 @@
  *      [ ] - Ability to parse query params 
  *
  *
+ *    Plug into any ExpressJS application
+ *
+ *
  *
  *
  * For v1
  *    JSON request bodies only
- *
- *    Hook into existing ExpressJS app
  *
  *
  *    Test Cases:
@@ -44,8 +45,6 @@ type Decoder<T> = ZodType<T>
 
 
 /**
- * Custom subset of the JSON spec that omits the 'password' field from JSON objects.
- *
  * source:
  *  - https://www.typescriptlang.org/play?#code/C4TwDgpgBAUgygeQHIDUCGAbArhAzlAXgCgooAfKAOywFsAjCAJxPKl2EYEtKBzFi6hgz8odAPZiMENJRHxkCOgCsIAY2BzEqTDlwBtALpEioSLC2KV6wlADeUPQGsAXGw7ceB1-O3Y8UAF8oADI7KDA0XFwAdzFGABMAfldKCAA3JkDjVTFKdihYsTBcTjxvC2U1YBtbFlIIqNiE1wByeLRgNFFGaVUACwBCIYGWogDjIA
  *  - https://stackoverflow.com/q/58594051/4259341
@@ -55,12 +54,8 @@ export type JSONValues =
   | string
   | null
   | boolean
-  | JSONObject
+  | { [k: string]: JSONValues }
   | JSONValues[]
-
-export interface JSONObject {
-  [k: string]: JSONValues
-} 
 
 
 type NonEmptyArray<T> = [T, ...T[]]
