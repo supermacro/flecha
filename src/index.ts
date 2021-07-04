@@ -1,5 +1,5 @@
 
-/* Desired behaviours & features:
+/* Desired behaviours & features for V1:
  *    Middleware:
  *
  *      [ ] - ability to process HTTP requests prior to arriving a handler
@@ -13,13 +13,34 @@
  *
  *    Plug into any ExpressJS application
  *
+ *    JSON request bodies only for now
+ *    
  *
  *
  *
- * For v1
- *    JSON request bodies only
+ * Ideas:
+ *
+ *    Using opaque types to prevent users from accessing internals or
+ *    creating structurally equivalent types / values:
+ *        https://stackoverflow.com/questions/56737033/how-to-define-an-opaque-type-in-typescript
  *
  *
+ *        newtype-ts seems to allow for operating on Opaque values:
+ *          https://gcanti.github.io/newtype-ts/
+ *
+ *
+ *
+ *    Partial type arguments one day:
+ *      
+ *      https://github.com/Microsoft/TypeScript/pull/26349
+ *
+ * TODOS: 
+ *    
+ *    - Better error messages for parsing errors
+ *        Currently I'm just returning the raw Zod error
+ *
+ *
+ * --------------------------------------------------
  *    Test Cases:
  *
  *      [ ] - as a user I can handle different Authorization checks
@@ -34,9 +55,10 @@
  */
 
 
-import { Result, ok, err } from 'neverthrow'
+import { Result, ResultAsync, ok, err, okAsync } from 'neverthrow'
 import { RouteError } from './errors'
 import { z, ZodType } from 'zod'
+import { Request, Response } from 'express'
 
 
 type Decoder<T> = ZodType<T>
@@ -157,7 +179,7 @@ interface PathParser<T extends string | number, P extends string> {
   fn: (raw: Record<string, undefined | string>) => Result<T, PathParseError>
 }
 
-type UrlPath = NonEmptyArray<string | PathParser<string, any> | PathParser<number, any>>
+type UrlPathParts = NonEmptyArray<string | PathParser<string, any> | PathParser<number, any>>
 
 
 const str = <P extends string>(pathParamName: P): PathParser<string, P> => {
@@ -201,10 +223,20 @@ const int = <P extends string>(pathParamName: P): PathParser<number, P> => {
 }
 
 
-type ExtractUrlPathParams<T extends UrlPath[number]> =
+type ExtractUrlPathParams<T extends UrlPathParts[number]> =
   T extends PathParser<infer U, string>
     ? { [K in T['path_name']]: U } 
     : undefined
+
+
+
+// alternative to using `as const`
+// use this to ensure ExtractUrlPathParams works
+// additionally, wrap UrlPath to prevent users from passing in a array literal into `route`
+const path = <U extends UrlPathParts>(path: U): { tag: 'url_path', path: U } => ({
+  tag: 'url_path',
+  path,
+}) 
 
 
 // /todos/:todoId/:weekday
@@ -213,6 +245,7 @@ type ExtractUrlPathParams<T extends UrlPath[number]> =
 // weekday parsed as an integer
 const urlPath = [ 'todos', str('todoId'), int('weekday') ] 
 
+const urlPath2 = path([ 'todos', str('todoId'), int('weekday') ])
 
 
 
@@ -226,62 +259,130 @@ type UnionToIntersection<U> =
 type Params = UnionToIntersection<ExtractUrlPathParams<(typeof urlPath)[number]>>
 
 
+type GetParsedParams<U extends UrlPathParts> = UnionToIntersection<ExtractUrlPathParams<U[number]>>
 
 
-// alternative to using `as const`
-// use this to ensure ExtractUrlPathParams works
-// additionally, wrap UrlPath to prevent users from passing in a array literal into `route`
-const path = <T extends UrlPath>(path: T): { tag: 'url_path', path: T } => ({
-  tag: 'url_path',
-  path,
-}) 
+type Yo = GetParsedParams<(typeof urlPath2)['path']>
 
 
 
 
 
 
-const urlPath2 = path([ 'todos', str('todoId'), int('weekday') ])
 
 
 
 
-const parseUrlPath = <T extends UrlPath>(path: T, rawRequestUrl: string): ExtractUrlPathParams<T[number]> => {
+
+
+
+const parseUrlPath = <T extends UrlPathParts>(
+  path: T,
+  rawRequestUrl: string
+): UnionToIntersection<ExtractUrlPathParams<T[number]>> => {
 
   return undefined
 }
 
 
-const yooooo = parseUrlPath(urlPath2, 'duudud')
+const yooooo = parseUrlPath(urlPath2.path, 'duudud')
 
 
-const cuid = <T extends string>(val: T) => {
-  return val
+
+
+interface RequestData<P, B = null> {
+  body: B
+  pathParams: P,
+  // user: UserToken  <-- TODO
+  // utils: Utils <-- TODO
 }
 
 
-cuid('yo')
-
-
-interface RouteConfig<B> {
-  parser: Decoder<B>
+interface AppData<T> {
+  data: T
 }
- 
-
-const route = <B, T>(
-  { parser, requiredPermissions }: RouteConfig<B>,
 
 
+type RouteResult<T> = ResultAsync<AppData<T>, RouteError>
 
+
+type RouteHandler<T, P, B = unknown> = (
+  data: RequestData<P, B>
+) => RouteResult<T>
+
+
+
+type Serializer <T> = (raw: T) => JSONValues
+
+
+const handleHandlerResult = <T>(
+  handlerResult: RouteResult<T>,
+  serializer: Serializer<T>,
+  res: Response
+): void => {
+  handlerResult
+    .map(({ data }) => {
+      res.status(200).json({
+        data: serializer(data),
+      })
+    })
+    .mapErr((error) => {
+      const { statusCode, errorMsg } = mapRouteError(error)
+      res.status(statusCode).json({ error: errorMsg })
+    })
+}
+
+
+
+const route = <T, U extends UrlPathParts, B>(
+  // method: Method  <-- TODO
+  urlPathParser: { tag: 'url_path', path: U },
+  bodyParser: Decoder<B>,
+  handler: RouteHandler<T, GetParsedParams<U>, B>
+) => ({
+  tag: 'route',
+  handler: (serializer: Serializer<T>) => (req: Request, res: Response) => {
+    const requestBodyDecodeResult = bodyParser.safeParse(req.body)
+
+    if (requestBodyDecodeResult.success === false) {
+      res.status(400).json({
+        error: requestBodyDecodeResult.error.errors,
+      })
+
+      return
+    }
+
+    const pathParams = parseUrlPath(urlPathParser.path, req.path)
+
+    const handlerResult = handler({
+      body: requestBodyDecodeResult.data,
+      pathParams,
+    })
+
+    handleHandlerResult(handlerResult, serializer, res)
+  }
+})
+
+
+
+const todoDataParser = z.object({
+  title: z.string()
+})
 
 const addTodo = route(
-  path([ 'todos', str('todoId') ]),
-  noConfig,
-  bodyParser: parser,
-  middleware: [ list, of, ordered, functions ]
-, ({ pathParams, body }) => {
+  // represents the following URL path
+  //    /todos/:todoId/:swag
+  path([ 'todos', str('todoId'), int('swag') ]),
+  todoDataParser,
+  ({ body, pathParams }) => {
+    const yo = body.title
 
-})
+    const todoId = pathParams.todoId
+    const swag = pathParams.swag
+
+    return okAsync({ data: null })
+  }
+)
 
 
 
@@ -290,7 +391,7 @@ const getTodo = route({
   path: [ 'todos', str 'todoId', int 'age' ],
   bodyParser: parser,
   middleware: [ list, of, ordered, functions ]
-}, ({ }) => {
+}, ({ body, pathParams }) => {
 
 })
 
