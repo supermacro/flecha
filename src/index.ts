@@ -58,12 +58,19 @@
 import { Result, ResultAsync, ok, err, okAsync } from 'neverthrow'
 import { RouteError } from './errors'
 import { z, ZodType } from 'zod'
-import { Request, Response } from 'express'
+import { Request as XRequest, Response as XResponse } from 'express'
+import { Newtype, iso } from 'newtype-ts'
 
 
 type Decoder<T> = ZodType<T>
 
+type Serializer <T> = (raw: T) => JSONValues
 
+type Handler<T> = (serializer: Serializer<T>) => (req: XRequest, res: XResponse) => void
+
+interface Route<T> extends Newtype<{ readonly Route: unique symbol }, Handler<T>> {}
+
+const createIsoRoute = <T>() => iso<Route<T>>()
 
 
 /**
@@ -144,11 +151,13 @@ const mapRouteError = (err: RouteError): RouteErrorHttpResponse => {
     }
 
     case 'Other': {
+      /*
       const errorInfo = [err.error ? err.error : '', `Context: ${err.context}`]
         .filter((val) => val !== '')
         .join('\n')
 
       logger.error(errorInfo)
+      */
 
       return {
         statusCode: 500,
@@ -160,14 +169,7 @@ const mapRouteError = (err: RouteError): RouteErrorHttpResponse => {
 
 
 
-
-
-export const flecha = () => undefined
-
-const server = flecha()
-  .withRoute()
-  .withRoute()
-
+export const noBody = (): Decoder<never> => z.never()
 
 
 
@@ -182,7 +184,7 @@ interface PathParser<T extends string | number, P extends string> {
 type UrlPathParts = NonEmptyArray<string | PathParser<string, any> | PathParser<number, any>>
 
 
-const str = <P extends string>(pathParamName: P): PathParser<string, P> => {
+export const str = <P extends string>(pathParamName: P): PathParser<string, P> => {
   return {
     tag: 'path_parser',
     path_name: pathParamName,
@@ -199,7 +201,7 @@ const str = <P extends string>(pathParamName: P): PathParser<string, P> => {
 }
 
 
-const int = <P extends string>(pathParamName: P): PathParser<number, P> => {
+export const int = <P extends string>(pathParamName: P): PathParser<number, P> => {
   return {
     tag: 'path_parser',
     path_name: pathParamName,
@@ -226,27 +228,17 @@ const int = <P extends string>(pathParamName: P): PathParser<number, P> => {
 type ExtractUrlPathParams<T extends UrlPathParts[number]> =
   T extends PathParser<infer U, string>
     ? { [K in T['path_name']]: U } 
-    : undefined
+    : { }
 
 
 
 // alternative to using `as const`
 // use this to ensure ExtractUrlPathParams works
 // additionally, wrap UrlPath to prevent users from passing in a array literal into `route`
-const path = <U extends UrlPathParts>(path: U): { tag: 'url_path', path: U } => ({
+export const path = <U extends UrlPathParts>(path: U): { tag: 'url_path', path: U } => ({
   tag: 'url_path',
   path,
 }) 
-
-
-// /todos/:todoId/:weekday
-//
-// todoId parsed as a string
-// weekday parsed as an integer
-const urlPath = [ 'todos', str('todoId'), int('weekday') ] 
-
-const urlPath2 = path([ 'todos', str('todoId'), int('weekday') ])
-
 
 
 // https://stackoverflow.com/questions/50374908/transform-union-type-to-intersection-type
@@ -256,23 +248,8 @@ type UnionToIntersection<U> =
     : never
 
 
-type Params = UnionToIntersection<ExtractUrlPathParams<(typeof urlPath)[number]>>
-
 
 type GetParsedParams<U extends UrlPathParts> = UnionToIntersection<ExtractUrlPathParams<U[number]>>
-
-
-type Yo = GetParsedParams<(typeof urlPath2)['path']>
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -285,14 +262,12 @@ const parseUrlPath = <T extends UrlPathParts>(
 }
 
 
-const yooooo = parseUrlPath(urlPath2.path, 'duudud')
-
-
 
 
 interface RequestData<P, B = null> {
   body: B
   pathParams: P,
+  // request: FlechaRequest <-- TODO
   // user: UserToken  <-- TODO
   // utils: Utils <-- TODO
 }
@@ -312,13 +287,12 @@ type RouteHandler<T, P, B = unknown> = (
 
 
 
-type Serializer <T> = (raw: T) => JSONValues
 
 
 const handleHandlerResult = <T>(
   handlerResult: RouteResult<T>,
   serializer: Serializer<T>,
-  res: Response
+  res: XResponse
 ): void => {
   handlerResult
     .map(({ data }) => {
@@ -333,15 +307,13 @@ const handleHandlerResult = <T>(
 }
 
 
-
-const route = <T, U extends UrlPathParts, B>(
+export const route = <T, U extends UrlPathParts, B>(
   // method: Method  <-- TODO
   urlPathParser: { tag: 'url_path', path: U },
   bodyParser: Decoder<B>,
   handler: RouteHandler<T, GetParsedParams<U>, B>
-) => ({
-  tag: 'route',
-  handler: (serializer: Serializer<T>) => (req: Request, res: Response) => {
+) => createIsoRoute<T>().wrap(
+  (serializer: Serializer<T>) => (req: XRequest, res: XResponse) => {
     const requestBodyDecodeResult = bodyParser.safeParse(req.body)
 
     if (requestBodyDecodeResult.success === false) {
@@ -361,42 +333,24 @@ const route = <T, U extends UrlPathParts, B>(
 
     handleHandlerResult(handlerResult, serializer, res)
   }
-})
-
-
-
-const todoDataParser = z.object({
-  title: z.string()
-})
-
-const addTodo = route(
-  // represents the following URL path
-  //    /todos/:todoId/:swag
-  path([ 'todos', str('todoId'), int('swag') ]),
-  todoDataParser,
-  ({ body, pathParams }) => {
-    const yo = body.title
-
-    const todoId = pathParams.todoId
-    const swag = pathParams.swag
-
-    return okAsync({ data: null })
-  }
 )
 
 
 
+class Flecha<R extends Route<any>> {
+  private routes: R[]
 
-const getTodo = route({
-  path: [ 'todos', str 'todoId', int 'age' ],
-  bodyParser: parser,
-  middleware: [ list, of, ordered, functions ]
-}, ({ body, pathParams }) => {
+  constructor(newRoutes: R[]) {
+    this.routes = newRoutes
+  }
 
-})
+  withRoute<T extends Route<any>>(route: T): Flecha<T | R> {
+    return new Flecha([
+      ...this.routes,
+      route,
+    ])
+  }
+}
 
+export const flecha = () => new Flecha([])
 
-
-
-
-server.withRoute(addTodo)
