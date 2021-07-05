@@ -6,9 +6,12 @@
       "downlevelIteration": true,
       "noUnusedLocals": true,
       "noUnusedParameters": true,
+      "noFallthroughCasesInSwitch": true,
+      "forceConsistentCasingInFileNames": true,
       "strictNullChecks": true,
       "strictFunctionTypes": true,
       "declaration": true,
+      "allowSyntheticDefaultImports": true,
       "moduleResolution": "Node",
       "baseUrl": "./src",
       "lib": [

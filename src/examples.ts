@@ -7,15 +7,14 @@ import {
   path,
   noBody,
   flecha,
+  Route,
 } from 'index'
 
 const todoDataParser = z.object({
   title: z.string()
 })
 
-const addTodo = route(
-  // represents the following URL path
-  //    /todos/:todoId/:swag
+const addTodo = Route.post(
   path([ 'todos' ]),
   todoDataParser,
   ({ body, pathParams }) => {
@@ -27,7 +26,7 @@ const addTodo = route(
 
 
 
-const getTodo = route(
+const getTodo = Route.get(
   path([ 'todos', str('todoId') ]),
   noBody(),
   ({ pathParams }) => {
@@ -44,8 +43,10 @@ const getTodo = route(
 )
 
 
-const deleteTodo = route(
-  path([ 'todos', str('todoId') ]),
+const deleteTodo = Route.del(
+  path([
+    'todos', str('todoId')
+  ]),
   noBody(),
   ({ pathParams }) => {
 
@@ -63,8 +64,11 @@ const router = flecha()
 
 
 
+const PORT = 3000
 
-
+router.listen(PORT, () => {
+  console.log(`Listening on port ${PORT}`)
+})
 
 
 

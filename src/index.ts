@@ -11,7 +11,7 @@
  *      [ ] - Ability to parse query params 
  *
  *
- *    Plug into any ExpressJS application
+ *    Plug into an existing ExpressJS application
  *
  *    JSON request bodies only for now
  *    
@@ -40,13 +40,26 @@
  *        Currently I'm just returning the raw Zod error
  *
  *
+ *    - Provide recommended TSConfig
+ *        Maybe provide a tool that analyses a project's tsconfig and provides
+ *        warnings or suggestions
+ *
+ *
  * --------------------------------------------------
  *    Test Cases:
+ *
+ *      [ ] - It successfully binds to a port and correctly sets up
+ *            all request handlers for the server
+ *
  *
  *      [ ] - as a user I can handle different Authorization checks
  *          Example:
  *            - JWT deserialization
  *            - Simple Authorization
+ *
+ *
+ *      [ ] - How to handle CORS
+ *
  *
  *      [ ] - as a user, I can create middleware that allows me to
  *            check if the user has permission to access this endpoint
@@ -58,8 +71,18 @@
 import { Result, ResultAsync, ok, err, okAsync } from 'neverthrow'
 import { RouteError } from './errors'
 import { z, ZodType } from 'zod'
-import { Request as XRequest, Response as XResponse } from 'express'
+import express, { Express, Request as XRequest, Response as XResponse } from 'express'
 import { Newtype, iso } from 'newtype-ts'
+
+
+
+type Method
+  = 'GET'
+  | 'PUT'
+  | 'POST'
+  | 'DELETE'
+  | 'PATCH'
+
 
 
 type Decoder<T> = ZodType<T>
@@ -68,9 +91,17 @@ type Serializer <T> = (raw: T) => JSONValues
 
 type Handler<T> = (serializer: Serializer<T>) => (req: XRequest, res: XResponse) => void
 
-interface Route<T> extends Newtype<{ readonly Route: unique symbol }, Handler<T>> {}
+interface RouteInfo<T> {
+  rawPath: string
+  method: Method
+  handler: Handler<T>
+}
+
+interface Route<T> extends Newtype<{ readonly Route: unique symbol }, RouteInfo<T>> {}
 
 const createIsoRoute = <T>() => iso<Route<T>>()
+
+
 
 
 /**
@@ -307,13 +338,32 @@ const handleHandlerResult = <T>(
 }
 
 
-export const route = <T, U extends UrlPathParts, B>(
-  // method: Method  <-- TODO
+
+const getRawPathFromUrlPathParts = (parts: UrlPathParts): string => {
+  const joinedParts = parts.map((part) =>
+    typeof part === 'string'
+      ? part
+      // using the "Named Route Parameters" convention provided by
+      // ExpressJS:
+      // http://expressjs.com/en/guide/routing.html#route-parameters
+      : `:${part.path_name}`
+    ).join('/')
+
+  return '/' + joinedParts
+}
+
+
+const route = <T, U extends UrlPathParts, B>(
+  method: Method,
   urlPathParser: { tag: 'url_path', path: U },
   bodyParser: Decoder<B>,
   handler: RouteHandler<T, GetParsedParams<U>, B>
-) => createIsoRoute<T>().wrap(
-  (serializer: Serializer<T>) => (req: XRequest, res: XResponse) => {
+) => createIsoRoute<T>().wrap({
+  method,
+
+  rawPath: getRawPathFromUrlPathParts(urlPathParser.path),
+
+  handler: (serializer: Serializer<T>) => (req: XRequest, res: XResponse) => {
     const requestBodyDecodeResult = bodyParser.safeParse(req.body)
 
     if (requestBodyDecodeResult.success === false) {
@@ -333,12 +383,44 @@ export const route = <T, U extends UrlPathParts, B>(
 
     handleHandlerResult(handlerResult, serializer, res)
   }
+}
+
+  
 )
+
+
+
+
+export namespace Route {
+  export const get = <T, U extends UrlPathParts, B>(
+    urlPathParser: { tag: 'url_path', path: U },
+    bodyParser: Decoder<B>,
+    handler: RouteHandler<T, GetParsedParams<U>, B>
+  ) =>
+    route('GET', urlPathParser, bodyParser, handler)
+
+  export const post = <T, U extends UrlPathParts, B>(
+    urlPathParser: { tag: 'url_path', path: U },
+    bodyParser: Decoder<B>,
+    handler: RouteHandler<T, GetParsedParams<U>, B>
+  ) =>
+    route('POST', urlPathParser, bodyParser, handler)
+
+
+  export const del = <T, U extends UrlPathParts, B>(
+    urlPathParser: { tag: 'url_path', path: U },
+    bodyParser: Decoder<B>,
+    handler: RouteHandler<T, GetParsedParams<U>, B>
+  ) =>
+    route('POST', urlPathParser, bodyParser, handler)
+}
+
 
 
 
 class Flecha<R extends Route<any>> {
   private routes: R[]
+  private expressApp: Express | undefined
 
   constructor(newRoutes: R[]) {
     this.routes = newRoutes
@@ -350,7 +432,36 @@ class Flecha<R extends Route<any>> {
       route,
     ])
   }
+
+  withExpressApp(app: Express) {
+    this.expressApp = app
+  }
+
+  listen(port: number, cb: () => void) {
+    if (this.expressApp) {
+      // it's the responsibility of the "host" express app
+      // to bind to a port in this case
+      return
+    }
+
+    const expressApp = express()
+
+
+    for (const route of this.routes) {
+      expressApp.request
+
+
+    }
+
+    expressApp.listen(port, cb)
+  }
 }
 
 export const flecha = () => new Flecha([])
+
+
+
+
+
+
 
