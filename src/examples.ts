@@ -1,7 +1,6 @@
 import { okAsync } from 'neverthrow'
 import { z } from 'zod'
 import {
-  route,
   str,
   int,
   path,
@@ -14,11 +13,14 @@ const todoDataParser = z.object({
   title: z.string()
 })
 
+
 const addTodo = Route.post(
   path([ 'todos' ]),
   todoDataParser,
-  ({ body, pathParams }) => {
+  ({ body, /*pathParams*/ }) => {
     const yo = body.title
+    
+    console.log(yo)
 
     return okAsync({ data: null })
   }
@@ -27,11 +29,11 @@ const addTodo = Route.post(
 
 
 const getTodo = Route.get(
-  path([ 'todos', str('todoId') ]),
+  path([ 'todos', int('todoId') ]),
   noBody(),
-  ({ pathParams }) => {
+  ({ /*pathParams*/ }) => {
 
-    const todoId = pathParams.todoId
+    // const todoId = pathParams.todoId
 
     return okAsync({
       data: {
@@ -48,9 +50,9 @@ const deleteTodo = Route.del(
     'todos', str('todoId')
   ]),
   noBody(),
-  ({ pathParams }) => {
+  ({ /*pathParams*/ }) => {
 
-    const todoId = pathParams.todoId
+    // const todoId = pathParams.todoId
 
     return okAsync({ data: true })
   }

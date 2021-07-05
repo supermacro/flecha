@@ -4,7 +4,7 @@
   "description": "Opinionated, functional and typesafe ✨ HTTP server",
   "main": "src/index.ts",
   "scripts": {
-    "build": "tsc",
+    "build": "rm -rf ./dist && tsc",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [

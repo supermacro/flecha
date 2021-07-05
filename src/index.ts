@@ -68,7 +68,7 @@
  */
 
 
-import { Result, ResultAsync, ok, err, okAsync } from 'neverthrow'
+import { Result, ResultAsync, ok, err } from 'neverthrow'
 import { RouteError } from './errors'
 import { z, ZodType } from 'zod'
 import express, { Express, Request as XRequest, Response as XResponse } from 'express'
@@ -77,11 +77,11 @@ import { Newtype, iso } from 'newtype-ts'
 
 
 type Method
-  = 'GET'
-  | 'PUT'
-  | 'POST'
-  | 'DELETE'
-  | 'PATCH'
+  = 'get'
+  | 'put'
+  | 'post'
+  | 'delete'
+  | 'patch'
 
 
 
@@ -200,7 +200,7 @@ const mapRouteError = (err: RouteError): RouteErrorHttpResponse => {
 
 
 
-export const noBody = (): Decoder<never> => z.never()
+export const noBody = (): Decoder<unknown> => z.unknown()
 
 
 
@@ -285,11 +285,11 @@ type GetParsedParams<U extends UrlPathParts> = UnionToIntersection<ExtractUrlPat
 
 
 const parseUrlPath = <T extends UrlPathParts>(
-  path: T,
-  rawRequestUrl: string
+  _path: T,
+  _rawRequestUrl: string
 ): UnionToIntersection<ExtractUrlPathParams<T[number]>> => {
 
-  return undefined
+  return { yo: 'string' } as UnionToIntersection<ExtractUrlPathParams<T[number]>>
 }
 
 
@@ -353,6 +353,8 @@ const getRawPathFromUrlPathParts = (parts: UrlPathParts): string => {
 }
 
 
+const isoRoute = iso<Route<any>>()
+
 const route = <T, U extends UrlPathParts, B>(
   method: Method,
   urlPathParser: { tag: 'url_path', path: U },
@@ -397,14 +399,14 @@ export namespace Route {
     bodyParser: Decoder<B>,
     handler: RouteHandler<T, GetParsedParams<U>, B>
   ) =>
-    route('GET', urlPathParser, bodyParser, handler)
+    route('get', urlPathParser, bodyParser, handler)
 
   export const post = <T, U extends UrlPathParts, B>(
     urlPathParser: { tag: 'url_path', path: U },
     bodyParser: Decoder<B>,
     handler: RouteHandler<T, GetParsedParams<U>, B>
   ) =>
-    route('POST', urlPathParser, bodyParser, handler)
+    route('post', urlPathParser, bodyParser, handler)
 
 
   export const del = <T, U extends UrlPathParts, B>(
@@ -412,7 +414,7 @@ export namespace Route {
     bodyParser: Decoder<B>,
     handler: RouteHandler<T, GetParsedParams<U>, B>
   ) =>
-    route('POST', urlPathParser, bodyParser, handler)
+    route('post', urlPathParser, bodyParser, handler)
 }
 
 
@@ -446,11 +448,15 @@ class Flecha<R extends Route<any>> {
 
     const expressApp = express()
 
+    console.log('> Setting up routes: ')
 
     for (const route of this.routes) {
-      expressApp.request
+      const { method, rawPath, handler } = isoRoute.unwrap(route)
 
 
+      console.log('Route: ' + method.toUpperCase() + ' ' + rawPath)
+
+      expressApp[method](rawPath, handler(() => null))
     }
 
     expressApp.listen(port, cb)
@@ -458,10 +464,6 @@ class Flecha<R extends Route<any>> {
 }
 
 export const flecha = () => new Flecha([])
-
-
-
-
 
 
 

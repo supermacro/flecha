@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
-      "module": "ES2015",
+      "module": "CommonJS",
+      "esModuleInterop": true,
       "noImplicitAny": true,
       "sourceMap": false,
       "downlevelIteration": true,
