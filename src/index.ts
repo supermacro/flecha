@@ -1,17 +1,7 @@
 
-/* Desired behaviours & features for V1:
- *    Middleware:
- *
- *      [ ] - ability to process HTTP requests prior to arriving a handler
+/*       
  *
  *
- *    Built-In Parsers
- *
- *      [ ] - Ability to parse url paths
- *      [ ] - Ability to parse query params 
- *
- *
- *    Plug into an existing ExpressJS application
  *
  *    JSON request bodies only for now
  *    
@@ -82,24 +72,21 @@ type Method
   | 'post'
   | 'delete'
   | 'patch'
+  | 'options'
 
 
 
 type Decoder<T> = ZodType<T>
 
-type Serializer <T> = (raw: T) => JSONValues
+type Handler = (req: XRequest, res: XResponse) => void
 
-type Handler<T> = (serializer: Serializer<T>) => (req: XRequest, res: XResponse) => void
-
-interface RouteInfo<T> {
+interface RouteInfo {
   rawPath: string
   method: Method
-  handler: Handler<T>
+  handler: Handler
 }
 
-interface Route<T> extends Newtype<{ readonly Route: unique symbol }, RouteInfo<T>> {}
-
-const createIsoRoute = <T>() => iso<Route<T>>()
+interface Route<T> extends Newtype<{ readonly Route: unique symbol }, RouteInfo> {}
 
 
 
@@ -200,7 +187,7 @@ const mapRouteError = (err: RouteError): RouteErrorHttpResponse => {
 
 
 
-export const noBody = (): Decoder<unknown> => z.unknown()
+export const noBody = (): Decoder<void> => z.void()
 
 
 
@@ -284,6 +271,33 @@ type GetParsedParams<U extends UrlPathParts> = UnionToIntersection<ExtractUrlPat
 
 
 
+
+
+
+
+/*
+  
+// when T is a union, the `extends` logic gets applied over each
+// member of the union, conceptually like "map" on arrays
+// 
+// Usage:
+//
+// Given:
+// type Routes = Route<string> | Route<number> | Route<boolean>
+//
+// Then
+// type InnerValues = RouteResponses<Routes>
+//     ---> type InnerValues = string | number | boolean
+type RouteResponses<T> = T extends Route<infer U> ? U : never
+
+
+
+*/
+
+
+
+
+
 const parseUrlPath = <T extends UrlPathParts>(
   _path: T,
   _rawRequestUrl: string
@@ -312,7 +326,7 @@ interface AppData<T> {
 type RouteResult<T> = ResultAsync<AppData<T>, RouteError>
 
 
-type RouteHandler<T, P, B = unknown> = (
+type RouteHandler<T extends JSONValues, P, B = unknown> = (
   data: RequestData<P, B>
 ) => RouteResult<T>
 
@@ -322,13 +336,12 @@ type RouteHandler<T, P, B = unknown> = (
 
 const handleHandlerResult = <T>(
   handlerResult: RouteResult<T>,
-  serializer: Serializer<T>,
   res: XResponse
 ): void => {
   handlerResult
     .map(({ data }) => {
       res.status(200).json({
-        data: serializer(data),
+        data,
       })
     })
     .mapErr((error) => {
@@ -353,19 +366,17 @@ const getRawPathFromUrlPathParts = (parts: UrlPathParts): string => {
 }
 
 
-const isoRoute = iso<Route<any>>()
-
-const route = <T, U extends UrlPathParts, B>(
+const route = <T extends JSONValues, U extends UrlPathParts, B>(
   method: Method,
   urlPathParser: { tag: 'url_path', path: U },
   bodyParser: Decoder<B>,
   handler: RouteHandler<T, GetParsedParams<U>, B>
-) => createIsoRoute<T>().wrap({
+) => iso<Route<T>>().wrap({
   method,
 
   rawPath: getRawPathFromUrlPathParts(urlPathParser.path),
 
-  handler: (serializer: Serializer<T>) => (req: XRequest, res: XResponse) => {
+  handler: (req: XRequest, res: XResponse) => {
     const requestBodyDecodeResult = bodyParser.safeParse(req.body)
 
     if (requestBodyDecodeResult.success === false) {
@@ -383,25 +394,22 @@ const route = <T, U extends UrlPathParts, B>(
       pathParams,
     })
 
-    handleHandlerResult(handlerResult, serializer, res)
+    handleHandlerResult(handlerResult, res)
   }
-}
-
-  
-)
+})
 
 
 
 
 export namespace Route {
-  export const get = <T, U extends UrlPathParts, B>(
+  export const get = <T extends JSONValues, U extends UrlPathParts, B>(
     urlPathParser: { tag: 'url_path', path: U },
     bodyParser: Decoder<B>,
     handler: RouteHandler<T, GetParsedParams<U>, B>
   ) =>
     route('get', urlPathParser, bodyParser, handler)
 
-  export const post = <T, U extends UrlPathParts, B>(
+  export const post = <T extends JSONValues, U extends UrlPathParts, B>(
     urlPathParser: { tag: 'url_path', path: U },
     bodyParser: Decoder<B>,
     handler: RouteHandler<T, GetParsedParams<U>, B>
@@ -409,7 +417,7 @@ export namespace Route {
     route('post', urlPathParser, bodyParser, handler)
 
 
-  export const del = <T, U extends UrlPathParts, B>(
+  export const del = <T extends JSONValues, U extends UrlPathParts, B>(
     urlPathParser: { tag: 'url_path', path: U },
     bodyParser: Decoder<B>,
     handler: RouteHandler<T, GetParsedParams<U>, B>
@@ -420,27 +428,34 @@ export namespace Route {
 
 
 
-class Flecha<R extends Route<any>> {
+class Flecha_<R extends Route<any>> {
   private routes: R[]
-  private expressApp: Express | undefined
+
+  // Flecha can be plugged into an existing
+  // "host" express application
+  private expressAppHost: Express | undefined
+
 
   constructor(newRoutes: R[]) {
     this.routes = newRoutes
   }
 
   withRoute<T extends Route<any>>(route: T): Flecha<T | R> {
-    return new Flecha([
+    return new Flecha_([
       ...this.routes,
       route,
     ])
   }
 
   withExpressApp(app: Express) {
-    this.expressApp = app
+    this.expressAppHost = app
   }
 
-  listen(port: number, cb: () => void) {
-    if (this.expressApp) {
+  listen(
+    port: number,
+    cb: () => void,
+  ) {
+    if (this.expressAppHost) {
       // it's the responsibility of the "host" express app
       // to bind to a port in this case
       return
@@ -450,20 +465,23 @@ class Flecha<R extends Route<any>> {
 
     console.log('> Setting up routes: ')
 
+    const isoRoute = iso<Route<any>>()
+
     for (const route of this.routes) {
       const { method, rawPath, handler } = isoRoute.unwrap(route)
 
-
       console.log('Route: ' + method.toUpperCase() + ' ' + rawPath)
 
-      expressApp[method](rawPath, handler(() => null))
+      expressApp[method](rawPath, handler)
     }
 
     expressApp.listen(port, cb)
   }
 }
 
-export const flecha = () => new Flecha([])
 
+export type Flecha<R extends Route<any>> = Flecha_<R>
+
+export const flecha = () => new Flecha_([])
 
 

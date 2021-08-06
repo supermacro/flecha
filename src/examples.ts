@@ -59,33 +59,18 @@ const deleteTodo = Route.del(
 )
 
 
-const router = flecha()
+
+
+const app = flecha()
   .withRoute(addTodo)
   .withRoute(getTodo)
   .withRoute(deleteTodo)
 
 
-
 const PORT = 3000
 
-router.listen(PORT, () => {
+app.listen(PORT, () => {
   console.log(`Listening on port ${PORT}`)
 })
 
 
-
-
-/*
-
-
-
-export const flecha = () => undefined
-
-const server = flecha()
-  .withRoute()
-  .withRoute()
-
-
-
-server.withRoute(addTodo)
-*/
