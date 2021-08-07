@@ -7,7 +7,10 @@ import {
   noBody,
   flecha,
   Route,
-} from 'index'
+} from '../../src/index'
+
+import { todoModel } from './db'
+
 
 const todoDataParser = z.object({
   title: z.string()
@@ -31,15 +34,15 @@ const addTodo = Route.post(
 const getTodo = Route.get(
   path([ 'todos', int('todoId') ]),
   noBody(),
-  ({ /*pathParams*/ }) => {
+  ({ pathParams }) => {
 
-    // const todoId = pathParams.todoId
+    const maybeTodo = todoModel.find({
+      id: pathParams.todoId
+    })
+
 
     return okAsync({
-      data: {
-        title: 'Read email',
-        completed: false,
-      }
+      data: maybeTodo,
     })
   }
 )

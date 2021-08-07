@@ -455,13 +455,11 @@ class Flecha_<R extends Route<any>> {
     port: number,
     cb: () => void,
   ) {
-    if (this.expressAppHost) {
+    const expressApp = this.expressAppHost
       // it's the responsibility of the "host" express app
       // to bind to a port in this case
-      return
-    }
-
-    const expressApp = express()
+      ? this.expressAppHost
+      : express()
 
     console.log('> Setting up routes: ')
 
