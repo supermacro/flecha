@@ -6,16 +6,27 @@
 **This is a work in progress**.
 
 
+## Features
+
+### JSON only
+
+v1 of Flecha focus only on JSON requests and responses. 
+
+Future versions of Flecha *may* allow for handling other sorts of input and output data.
+
+
 ### Litmus Test
 
-I am happy declaring a 1.0 once the following is done
+
+The road to 1.0
+
 
 - [ ] HTTP body / content-type decoders
   - [x] JSON
 - [ ] Decent level of tests
 - [ ] Handle `PATCH` request
 - [ ] CORS?
-  - at hte very leats have a `OPTIONS` request
+  - at the very least have a `OPTIONS` request
 - [ ] Dependency injection
 - [ ] Middleware
 - [ ] Built-In Parsers
@@ -35,7 +46,10 @@ I am happy declaring a 1.0 once the following is done
 
 ## Ideas:
 
-Partial type arguments one day:
+- Partial type arguments one day: https://github.com/Microsoft/TypeScript/pull/26349
+- Host on [fly.io](https://fly.io)
 
-https://github.com/Microsoft/TypeScript/pull/26349
 
+## Shoutout / Inspiration:
+
+https://github.com/akheron/typera
