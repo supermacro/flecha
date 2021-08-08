@@ -21,8 +21,7 @@ Future versions of Flecha *may* allow for handling other sorts of input and outp
 The road to 1.0
 
 
-- [ ] HTTP body / content-type decoders
-  - [x] JSON
+- [x] JSON decoding
 - [ ] Decent level of tests
 - [ ] Handle `PATCH` request
 - [ ] CORS?
@@ -35,6 +34,7 @@ The road to 1.0
 - [ ] Plug into existing expressjs application
 - [ ] TODO app
   - [ ] `GET` many todos
+    - [ ] Implement pagination using query params
   - [ ] `GET` one todo
   - [ ] `PUT` todo
   - [ ] `POST` todo
