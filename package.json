@@ -5,6 +5,7 @@
   "main": "src/index.ts",
   "scripts": {
     "build": "rm -rf ./dist && tsc",
+    "watch": "tsc --noEmit --watch -p tsconfig.json",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
