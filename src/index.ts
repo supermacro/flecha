@@ -476,8 +476,6 @@ class Flecha_<R extends Route<any>> {
     cb: () => void,
   ) {
     const expressApp = this.expressAppHost
-      // it's the responsibility of the "host" express app
-      // to bind to a port in this case
       ? this.expressAppHost
       : express()
 
@@ -491,6 +489,12 @@ class Flecha_<R extends Route<any>> {
       console.log('Route: ' + method.toUpperCase() + ' ' + rawPath)
 
       expressApp[method](rawPath, handler)
+    }
+
+    if (this.expressAppHost) {
+      // it's the responsibility of the "host" express app
+      // to bind to a port in this case
+      return
     }
 
     expressApp.listen(port, cb)
