@@ -26,6 +26,7 @@ The road to 1.0
 - [ ] Handle `PATCH` request
 - [ ] CORS?
   - at the very least have a `OPTIONS` request
+     This is known as a [preflight request](https://developer.mozilla.org/en-US/docs/Glossary/Preflight_request)
 - [ ] Dependency injection
 - [ ] Middleware
 - [ ] Built-In Parsers

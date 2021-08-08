@@ -333,6 +333,8 @@ const handleHandlerResult = <T>(
 ): void => {
   handlerResult
     .map(({ data }) => {
+      res.setHeader('Access-Control-Allow-Origin', '*')
+
       res.status(200).json({
         data,
       })
