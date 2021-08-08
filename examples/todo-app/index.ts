@@ -30,6 +30,6 @@ const DEFAULT_PORT = 3000
 const appPort = envPort || DEFAULT_PORT
 
 app.listen(appPort, () => {
-  console.log(`Listening on port ${PORT}`)
+  console.log(`Listening on port ${appPort}`)
 })
 
