@@ -16,10 +16,20 @@ const app = flecha()
   .withRoute(listTodos)
 
 
-const PORT = 3000
+const { PORT } = process.env
 
-app.listen(PORT, () => {
+const envPort = typeof PORT === 'string'
+  ? parseInt(PORT, 10)
+  : undefined
+
+if (Number.isNaN(envPort)) {
+  throw new Error(`Invalid PORT env var: ${process.env.PORT}`)
+}
+  
+const DEFAULT_PORT = 3000
+const appPort = envPort || DEFAULT_PORT
+
+app.listen(appPort, () => {
   console.log(`Listening on port ${PORT}`)
 })
-
 
