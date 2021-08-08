@@ -39,7 +39,6 @@ The road to 1.0
   - [ ] `PUT` todo
   - [ ] `POST` todo
   - [ ] `DELETE` todo
-  - [ ] Serve static content
   - [ ] write to db
   - [ ] Authenticate
   - [ ] RBAC
