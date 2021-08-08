@@ -494,7 +494,13 @@ class Flecha_<R extends Route<any>> {
 
       console.log('Route: ' + method.toUpperCase() + ' ' + rawPath)
 
-      expressApp[method](rawPath, handler)
+      const shouldSkipJsonParsing = ['get', 'delete'].includes(method)
+
+      if (shouldSkipJsonParsing) {
+        expressApp[method](rawPath, handler)
+      } else {
+        expressApp[method](rawPath, express.json(), handler)
+      }
     }
 
     if (this.expressAppHost) {
