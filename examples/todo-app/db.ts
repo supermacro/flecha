@@ -1,6 +1,7 @@
+import { JSONObject } from "index"
 import { okAsync, ResultAsync } from "neverthrow"
 
-interface Todo {
+export interface Todo extends JSONObject {
   id: number
   title: string
   completed: boolean
@@ -51,22 +52,75 @@ interface Query {
 }
 
 
-const selectMany = ({ filter }: Query): QueryResult<Todo[]> => {
-  const todoList = Object.values (todos)
+interface Id {
+  id: number
+}
+
+
+type TodoInfo = Pick<Todo, 'title'>
+
+
+const createTodoId = () => 
+  Math.floor(
+    Math.random() * (10 ** 9)
+  )
+
+
+const insert = ({ title }: TodoInfo): QueryResult<Todo> => {
+  const id = createTodoId()
+
+  const newTodo = {
+    id,
+    title,
+    completed: false,
+  }
+
+  Object.assign(
+    todos,
+    { [id]: newTodo }
+  )
+
+
+  return okAsync(newTodo)
+}
+
+
+const selectMany = (
+  query: Query | void
+): QueryResult<Todo[]> => {
+  console.log(query)
+
+  const todoList = Object.values(todos)
 
   return okAsync(todoList)
 }
 
-const find = ({ id }: { id: number }): QueryResult<Todo | null> =>
+
+const find = ({ id }: Id): QueryResult<Todo | null> =>
   okAsync(
     todos[id]
   )
 
 
+const delete_ = ({ id }: Id): QueryResult<Todo | null> => {
+  const associatedTodo = todos[id]
+
+  if (associatedTodo) {
+
+    delete todos[id]
+
+    return okAsync(associatedTodo)
+  }
+
+  return okAsync(null)
+}
+
 
 export const todoModel = {
+  insert,
   find,
   selectMany,
+  delete: delete_,
 }
 
 

@@ -86,7 +86,7 @@ interface RouteInfo {
   handler: Handler
 }
 
-interface Route<T> extends Newtype<{ readonly Route: unique symbol }, RouteInfo> {}
+export interface Route<T> extends Newtype<{ readonly Route: unique symbol }, RouteInfo> {}
 
 
 
@@ -101,8 +101,12 @@ export type JSONValues =
   | string
   | null
   | boolean
-  | { [k: string]: JSONValues }
+  | JSONObject
   | JSONValues[]
+
+export interface JSONObject {
+  [k: string]: JSONValues
+}
 
 
 type NonEmptyArray<T> = [T, ...T[]]
@@ -366,63 +370,70 @@ const getRawPathFromUrlPathParts = (parts: UrlPathParts): string => {
 }
 
 
-const route = <T extends JSONValues, U extends UrlPathParts, B>(
-  method: Method,
-  urlPathParser: { tag: 'url_path', path: U },
-  bodyParser: Decoder<B>,
-  handler: RouteHandler<T, GetParsedParams<U>, B>
-) => iso<Route<T>>().wrap({
-  method,
+const route = (method: Method) =>
+  <T extends JSONValues, U extends UrlPathParts, B>(
+    urlPathParser: { tag: 'url_path', path: U },
+    bodyParser: Decoder<B>,
+    handler: RouteHandler<T, GetParsedParams<U>, B>
+  ) =>
+    iso<Route<T>>().wrap({
+      method,
 
-  rawPath: getRawPathFromUrlPathParts(urlPathParser.path),
+      rawPath: getRawPathFromUrlPathParts(urlPathParser.path),
 
-  handler: (req: XRequest, res: XResponse) => {
-    const requestBodyDecodeResult = bodyParser.safeParse(req.body)
+      handler: (req: XRequest, res: XResponse) => {
+        const requestBodyDecodeResult = bodyParser.safeParse(req.body)
 
-    if (requestBodyDecodeResult.success === false) {
-      res.status(400).json({
-        error: requestBodyDecodeResult.error.errors,
-      })
+        if (requestBodyDecodeResult.success === false) {
+          res.status(400).json({
+            error: requestBodyDecodeResult.error.errors,
+          })
 
-      return
-    }
+          return
+        }
 
-    const pathParams = parseUrlPath(urlPathParser.path, req.path)
+        const pathParams = parseUrlPath(urlPathParser.path, req.path)
 
-    const handlerResult = handler({
-      body: requestBodyDecodeResult.data,
-      pathParams,
+        const handlerResult = handler({
+          body: requestBodyDecodeResult.data,
+          pathParams,
+        })
+
+        handleHandlerResult(handlerResult, res)
+      }
     })
 
-    handleHandlerResult(handlerResult, res)
-  }
-})
 
-
-
-
-export namespace Route {
-  export const get = <T extends JSONValues, U extends UrlPathParts, B>(
+// Same as route, except there is no request body to be parsed
+const simpleRoute = (method: Method) =>
+  <T extends JSONValues, U extends UrlPathParts>(
     urlPathParser: { tag: 'url_path', path: U },
-    bodyParser: Decoder<B>,
-    handler: RouteHandler<T, GetParsedParams<U>, B>
+    handler: RouteHandler<T, GetParsedParams<U>, void>
   ) =>
-    route('get', urlPathParser, bodyParser, handler)
+    iso<Route<T>>().wrap({
+      method,
 
-  export const post = <T extends JSONValues, U extends UrlPathParts, B>(
-    urlPathParser: { tag: 'url_path', path: U },
-    bodyParser: Decoder<B>,
-    handler: RouteHandler<T, GetParsedParams<U>, B>
-  ) =>
-    route('post', urlPathParser, bodyParser, handler)
+      rawPath: getRawPathFromUrlPathParts(urlPathParser.path),
+
+      handler: (req: XRequest, res: XResponse) => {
+        const pathParams = parseUrlPath(urlPathParser.path, req.path)
+
+        const handlerResult = handler({
+          body: undefined,
+          pathParams,
+        })
+
+        handleHandlerResult(handlerResult, res)
+      }
+    })
 
 
-  export const del = <T extends JSONValues, U extends UrlPathParts, B>(
-    urlPathParser: { tag: 'url_path', path: U },
-    bodyParser: Decoder<B>,
-    handler: RouteHandler<T, GetParsedParams<U>, B>
-  ) =>
-    route('post', urlPathParser, bodyParser, handler)
+
+export const Route = {
+  get: simpleRoute('get'),
+  put: route('put'),
+  post: route('post'),
+  delete: simpleRoute('delete'),
 }
 
 

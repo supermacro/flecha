@@ -1,0 +1,12 @@
+
+const addTodo = Route.post(
+  path([ 'todos' ]),
+  todoDataParser,
+  ({ body, /*pathParams*/ }) => {
+    const yo = body.title
+    
+    console.log(yo)
+
+    return okAsync({ data: null })
+  }
+)
