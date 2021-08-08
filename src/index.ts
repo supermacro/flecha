@@ -1,4 +1,4 @@
-import { Result, ResultAsync, ok, err } from 'neverthrow'
+import { Result, ResultAsync, ok, err, combine } from 'neverthrow'
 import { RouteError } from './errors'
 import { z, ZodType } from 'zod'
 import express, { Express, Request as XRequest, Response as XResponse } from 'express'
@@ -137,13 +137,20 @@ export const noBody = (): Decoder<void> => z.void()
 
 type PathParseError = 'path_parse_error'
 
+
+
+type RawPathParams = Record<string, undefined | string>
+
 interface PathParser<T extends string | number, P extends string> {
   tag: 'path_parser'
   path_name: P,
-  fn: (raw: Record<string, undefined | string>) => Result<T, PathParseError>
+  fn: (raw: RawPathParams) => Result<T, PathParseError>
 }
 
-type UrlPathParts = NonEmptyArray<string | PathParser<string, any> | PathParser<number, any>>
+
+type PathParserVariation = PathParser<string, any> | PathParser<number, any>
+
+type UrlPathParts = NonEmptyArray<string | PathParserVariation>
 
 
 export const str = <P extends string>(pathParamName: P): PathParser<string, P> => {
@@ -240,16 +247,52 @@ type RouteResponses<T> = T extends Route<infer U> ? U : never
 
 
 
+type ParsedUrlParts<T extends UrlPathParts> = UnionToIntersection<ExtractUrlPathParams<T[number]>>
+
+interface ParsedPathPart {
+  [x: string]: string | number
+}
+
+
+const partsListIntoCombinedParts = <T extends UrlPathParts>(
+  list: ParsedPathPart[]
+): ParsedUrlParts<T> =>
+  list.reduce((partsObject, part) => {
+    return {
+      // need to dangerously cast this value for now:
+      // https://github.com/Microsoft/TypeScript/issues/10727
+      ...partsObject as any,
+      ...part,
+    }
+  }, {} as unknown as ParsedUrlParts<T>)
+
+
 
 
 const parseUrlPath = <T extends UrlPathParts>(
-  _path: T,
-  _rawRequestUrl: string
-): UnionToIntersection<ExtractUrlPathParams<T[number]>> => {
+  pathParts: T,
+  rawPathParams: RawPathParams
+): Result<ParsedUrlParts<T>, 'path_parse_error'> => {
+  const parseResults = pathParts.filter(
+    (part): part is PathParserVariation => typeof part !== 'string'
+  )
+  .map((pathParser) => {
+    return pathParser.fn(rawPathParams)
+      .map((parsedValue) => {
+        const pathName: string = pathParser.path_name
 
-  return { yo: 'string' } as UnionToIntersection<ExtractUrlPathParams<T[number]>>
+        const parsedPathPart: ParsedPathPart = {
+          [pathName]: parsedValue,
+        }
+
+        return parsedPathPart
+      })
+  })
+  
+  return combine(parseResults).map(
+    (list) => partsListIntoCombinedParts<T>(list)
+  )
 }
-
 
 
 
@@ -332,7 +375,20 @@ const route = (method: Method) =>
           return
         }
 
-        const pathParams = parseUrlPath(urlPathParser.path, req.path)
+        const pathParamsParseResult = parseUrlPath(
+          urlPathParser.path,
+          req.params,
+        )
+
+        if (pathParamsParseResult.isErr()) {
+          res.status(400).json({
+            error: 'Invalid url path',
+          })
+
+          return
+        }
+
+        const pathParams = pathParamsParseResult.value
 
         const handlerResult = handler({
           body: requestBodyDecodeResult.data,
@@ -356,7 +412,20 @@ const simpleRoute = (method: Method) =>
       rawPath: getRawPathFromUrlPathParts(urlPathParser.path),
 
       handler: (req: XRequest, res: XResponse) => {
-        const pathParams = parseUrlPath(urlPathParser.path, req.path)
+        const pathParamsParseResult = parseUrlPath(
+          urlPathParser.path,
+          req.params,
+        )
+
+        if (pathParamsParseResult.isErr()) {
+          res.status(400).json({
+            error: 'Invalid url path',
+          })
+
+          return
+        }
+
+        const pathParams = pathParamsParseResult.value
 
         const handlerResult = handler({
           body: undefined,
