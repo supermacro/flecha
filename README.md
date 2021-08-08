@@ -41,6 +41,12 @@ The road to 1.0
   - [ ] `DELETE` todo
   - [ ] Serve static content
   - [ ] write to db
+  - [ ] Authenticate
+  - [ ] RBAC
+     - Have super admin role and regular user role
+       - Only super admins can delete todos
+- [ ] Re-export zod parsers and tie to a specific version / tag
+- [ ] Re-export neverthrow and tie to a specific version / tag
 
 
 
