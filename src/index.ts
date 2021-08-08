@@ -185,6 +185,12 @@ export const int = <P extends string>(pathParamName: P): PathParser<number, P> =
           return err('path_parse_error')
         }
 
+        // Checking for the following situation:
+        // parseInt('123auiwe8923') -> 123
+        if (parsedInteger.toString().length !== pathParam.length) {
+          return err('path_parse_error')
+        }
+
         return ok(parsedInteger)
       }
 
