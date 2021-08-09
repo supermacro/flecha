@@ -1,10 +1,9 @@
-import { Result, ResultAsync, combine } from 'neverthrow'
+import { ResultAsync } from 'neverthrow'
 import { RouteError } from './errors'
 import {
   getRawPathFromUrlPathParts,
-  ExtractUrlPathParams,
-  PathParserVariation,
-  RawPathParams,
+  GetParsedParams,
+  parseUrlPath,
   UrlPathParts,
 } from './url-path-parsers'
 import { z, ZodType } from 'zod'
@@ -145,12 +144,6 @@ export const noBody = (): Decoder<void> => z.void()
 
 
 
-// https://stackoverflow.com/questions/50374908/transform-union-type-to-intersection-type
-type UnionToIntersection<U> =
-  (U extends any ? (k: U) => void : never) extends ((k: infer I) => void)
-    ? I
-    : never
-
 
 
 
@@ -181,52 +174,6 @@ type RouteResponses<T> = T extends Route<infer U> ? U : never
 
 
 
-type ParsedUrlParts<T extends UrlPathParts> = UnionToIntersection<ExtractUrlPathParams<T[number]>>
-
-interface ParsedPathPart {
-  [x: string]: string | number
-}
-
-
-const partsListIntoCombinedParts = <T extends UrlPathParts>(
-  list: ParsedPathPart[]
-): ParsedUrlParts<T> =>
-  list.reduce((partsObject, part) => {
-    return {
-      // need to dangerously cast this value for now:
-      // https://github.com/Microsoft/TypeScript/issues/10727
-      ...partsObject as any,
-      ...part,
-    }
-  }, {} as unknown as ParsedUrlParts<T>)
-
-
-
-
-const parseUrlPath = <T extends UrlPathParts>(
-  pathParts: T,
-  rawPathParams: RawPathParams
-): Result<ParsedUrlParts<T>, 'path_parse_error'> => {
-  const parseResults = pathParts.filter(
-    (part): part is PathParserVariation => typeof part !== 'string'
-  )
-  .map((pathParser) => {
-    return pathParser.fn(rawPathParams)
-      .map((parsedValue) => {
-        const pathName: string = pathParser.path_name
-
-        const parsedPathPart: ParsedPathPart = {
-          [pathName]: parsedValue,
-        }
-
-        return parsedPathPart
-      })
-  })
-  
-  return combine(parseResults).map(
-    (list) => partsListIntoCombinedParts<T>(list)
-  )
-}
 
 
 
@@ -253,7 +200,6 @@ type RouteHandler<T extends JSONValues, P, B = unknown> = (
 
 
 
-type GetParsedParams<U extends UrlPathParts> = UnionToIntersection<ExtractUrlPathParams<U[number]>>
 
 
 const handleHandlerResult = <T>(

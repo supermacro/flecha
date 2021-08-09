@@ -1,4 +1,12 @@
-import { ok, err, Result } from 'neverthrow'
+import { ok, err, combine, Result } from 'neverthrow'
+
+
+
+// https://stackoverflow.com/questions/50374908/transform-union-type-to-intersection-type
+type UnionToIntersection<U> =
+  (U extends any ? (k: U) => void : never) extends ((k: infer I) => void)
+    ? I
+    : never
 
 
 type NonEmptyArray<T> = [T, ...T[]]
@@ -14,18 +22,28 @@ interface PathParser<T extends string | number, P extends string> {
 }
 
 
-export type RawPathParams = Record<string, undefined | string>
+interface ParsedPathPart {
+  [x: string]: string | number
+}
 
-export type PathParserVariation = PathParser<string, any> | PathParser<number, any>
+
+type RawPathParams = Record<string, undefined | string>
+
+type PathParserVariation = PathParser<string, any> | PathParser<number, any>
 
 
-export type ExtractUrlPathParams<T extends UrlPathParts[number]> =
+type ExtractUrlPathParams<T extends UrlPathParts[number]> =
   T extends PathParser<infer U, string>
     ? { [K in T['path_name']]: U } 
     : { }
 
 
+export type GetParsedParams<U extends UrlPathParts> = UnionToIntersection<ExtractUrlPathParams<U[number]>>
+
 export type UrlPathParts = NonEmptyArray<string | PathParserVariation>
+
+
+
 
 
 export const getRawPathFromUrlPathParts = (parts: UrlPathParts): string => {
@@ -97,4 +115,47 @@ export const int = <P extends string>(pathParamName: P): PathParser<number, P> =
       return err('path_parse_error')
     }
   }
+}
+
+
+
+
+const partsListIntoCombinedParts = <T extends UrlPathParts>(
+  list: ParsedPathPart[]
+): GetParsedParams<T> =>
+  list.reduce((partsObject, part) => {
+    return {
+      // need to dangerously cast this value for now:
+      // https://github.com/Microsoft/TypeScript/issues/10727
+      ...partsObject as any,
+      ...part,
+    }
+  }, {} as unknown as GetParsedParams<T>)
+
+
+
+
+export const parseUrlPath = <T extends UrlPathParts>(
+  pathParts: T,
+  rawPathParams: RawPathParams
+): Result<GetParsedParams<T>, 'path_parse_error'> => {
+  const parseResults = pathParts.filter(
+    (part): part is PathParserVariation => typeof part !== 'string'
+  )
+  .map((pathParser) => {
+    return pathParser.fn(rawPathParams)
+      .map((parsedValue) => {
+        const pathName: string = pathParser.path_name
+
+        const parsedPathPart: ParsedPathPart = {
+          [pathName]: parsedValue,
+        }
+
+        return parsedPathPart
+      })
+  })
+  
+  return combine(parseResults).map(
+    (list) => partsListIntoCombinedParts<T>(list)
+  )
 }
