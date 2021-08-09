@@ -1,8 +1,18 @@
-import { Result, ResultAsync, ok, err, combine } from 'neverthrow'
+import { Result, ResultAsync, combine } from 'neverthrow'
 import { RouteError } from './errors'
+import {
+  getRawPathFromUrlPathParts,
+  ExtractUrlPathParams,
+  PathParserVariation,
+  RawPathParams,
+  UrlPathParts,
+} from './url-path-parsers'
 import { z, ZodType } from 'zod'
 import express, { Express, Request as XRequest, Response as XResponse } from 'express'
 import { Newtype, iso } from 'newtype-ts'
+
+
+export { int, str } from './url-path-parsers'
 
 
 
@@ -49,7 +59,6 @@ export interface JSONObject {
 }
 
 
-type NonEmptyArray<T> = [T, ...T[]]
 
 
 
@@ -135,77 +144,6 @@ export const noBody = (): Decoder<void> => z.void()
 
 
 
-type PathParseError = 'path_parse_error'
-
-
-
-type RawPathParams = Record<string, undefined | string>
-
-interface PathParser<T extends string | number, P extends string> {
-  tag: 'path_parser'
-  path_name: P,
-  fn: (raw: RawPathParams) => Result<T, PathParseError>
-}
-
-
-type PathParserVariation = PathParser<string, any> | PathParser<number, any>
-
-type UrlPathParts = NonEmptyArray<string | PathParserVariation>
-
-
-export const str = <P extends string>(pathParamName: P): PathParser<string, P> => {
-  return {
-    tag: 'path_parser',
-    path_name: pathParamName,
-    fn: (rawPathParams) => {
-      const pathParam = rawPathParams[pathParamName]
-
-      if (pathParam) {
-        return ok(pathParam)
-      }
-
-      return err('path_parse_error')
-    }
-  }
-}
-
-
-export const int = <P extends string>(pathParamName: P): PathParser<number, P> => {
-  return {
-    tag: 'path_parser',
-    path_name: pathParamName,
-    fn: (rawPathParams) => {
-      const pathParam = rawPathParams[pathParamName]
-
-      if (pathParam) {
-        const BASE_10 = 10
-        const parsedInteger = parseInt(pathParam, BASE_10)
-
-        if (Number.isNaN(parsedInteger)) {
-          return err('path_parse_error')
-        }
-
-        // Checking for the following situation:
-        // parseInt('123auiwe8923') -> 123
-        if (parsedInteger.toString().length !== pathParam.length) {
-          return err('path_parse_error')
-        }
-
-        return ok(parsedInteger)
-      }
-
-      return err('path_parse_error')
-    }
-  }
-}
-
-
-type ExtractUrlPathParams<T extends UrlPathParts[number]> =
-  T extends PathParser<infer U, string>
-    ? { [K in T['path_name']]: U } 
-    : { }
-
-
 
 // alternative to using `as const`
 // use this to ensure ExtractUrlPathParams works
@@ -224,7 +162,6 @@ type UnionToIntersection<U> =
 
 
 
-type GetParsedParams<U extends UrlPathParts> = UnionToIntersection<ExtractUrlPathParams<U[number]>>
 
 
 
@@ -325,6 +262,7 @@ type RouteHandler<T extends JSONValues, P, B = unknown> = (
 
 
 
+type GetParsedParams<U extends UrlPathParts> = UnionToIntersection<ExtractUrlPathParams<U[number]>>
 
 
 const handleHandlerResult = <T>(
@@ -347,18 +285,6 @@ const handleHandlerResult = <T>(
 
 
 
-const getRawPathFromUrlPathParts = (parts: UrlPathParts): string => {
-  const joinedParts = parts.map((part) =>
-    typeof part === 'string'
-      ? part
-      // using the "Named Route Parameters" convention provided by
-      // ExpressJS:
-      // http://expressjs.com/en/guide/routing.html#route-parameters
-      : `:${part.path_name}`
-    ).join('/')
-
-  return '/' + joinedParts
-}
 
 
 const route = (method: Method) =>
