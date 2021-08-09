@@ -44,6 +44,13 @@ export const getRawPathFromUrlPathParts = (parts: UrlPathParts): string => {
 
 
 
+// alternative to using `as const`
+// use this to ensure ExtractUrlPathParams works
+// additionally, wrap UrlPath to prevent users from passing in a array literal into `route`
+export const path = <U extends UrlPathParts>(path: U): { tag: 'url_path', path: U } => ({
+  tag: 'url_path',
+  path,
+}) 
 
 
 export const str = <P extends string>(pathParamName: P): PathParser<string, P> => {

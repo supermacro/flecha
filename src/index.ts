@@ -12,7 +12,7 @@ import express, { Express, Request as XRequest, Response as XResponse } from 'ex
 import { Newtype, iso } from 'newtype-ts'
 
 
-export { int, str } from './url-path-parsers'
+export { path, int, str } from './url-path-parsers'
 
 
 
@@ -143,15 +143,6 @@ const mapRouteError = (err: RouteError): RouteErrorHttpResponse => {
 export const noBody = (): Decoder<void> => z.void()
 
 
-
-
-// alternative to using `as const`
-// use this to ensure ExtractUrlPathParams works
-// additionally, wrap UrlPath to prevent users from passing in a array literal into `route`
-export const path = <U extends UrlPathParts>(path: U): { tag: 'url_path', path: U } => ({
-  tag: 'url_path',
-  path,
-}) 
 
 
 // https://stackoverflow.com/questions/50374908/transform-union-type-to-intersection-type
