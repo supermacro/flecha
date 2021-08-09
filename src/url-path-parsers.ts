@@ -15,7 +15,7 @@ type NonEmptyArray<T> = [T, ...T[]]
 type PathParseError = 'path_parse_error'
 
 
-interface PathParser<T extends string | number, P extends string> {
+export interface PathParser<T extends string | number, P extends string> {
   tag: 'path_parser'
   path_name: P,
   fn: (raw: RawPathParams) => Result<T, PathParseError>
