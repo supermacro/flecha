@@ -24,10 +24,9 @@ The road to 1.0
 - [x] JSON decoding
 - [ ] Decent level of tests
 - [ ] Handle `PATCH` request
-- [ ] CORS?
-  - at the very least have a `OPTIONS` request
-     This is known as a [preflight request](https://developer.mozilla.org/en-US/docs/Glossary/Preflight_request)
 - [ ] Dependency injection
+  - Given an object of dependencies, have those dependencies available to request handlers
+    things such as a `db` object containing a stateful database connection
 - [ ] Middleware
 - [ ] Built-In Parsers
   - [x] - Ability to parse url paths
@@ -40,11 +39,7 @@ The road to 1.0
   - [ ] `PUT` todo
   - [ ] `POST` todo
   - [ ] `DELETE` todo
-  - [ ] write to db
-  - [ ] Authenticate
-  - [ ] RBAC
-     - Idea: Have super admin role and regular user role
-       - Only super admins can delete todos
+  - [x] write to db
 - [ ] Re-export zod parsers and tie to a specific version / tag
 - [ ] Re-export neverthrow and tie to a specific version / tag
 - [ ] Better error messages for parsing errors
