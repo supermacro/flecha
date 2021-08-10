@@ -11,7 +11,31 @@ import express, { Express, Request as XRequest, Response as XResponse } from 'ex
 import { Newtype, iso } from 'newtype-ts'
 
 
+///////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////
+//     Re-Exports
+//
 export { path, int, str } from './url-path-parsers'
+export {
+  ok,
+  err,
+  Ok,
+  Err,
+  Result,
+
+  okAsync,
+  errAsync,
+  ResultAsync,
+
+  combine,
+  combineWithAllErrors,
+
+  fromPromise,
+  fromThrowable,
+  fromSafePromise
+} from 'neverthrow'
+export const parser = z
+////////////////////////////////////////////////
 
 
 
