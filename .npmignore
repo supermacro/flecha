@@ -1,0 +1,13 @@
+.gitignore
+.eslintrc.js
+.prettierrc.js
+tsconfig.json
+renovate.json
+babel.config.js
+jest.config.js
+
+src/
+tests/
+examples/
+node_modules/
+
