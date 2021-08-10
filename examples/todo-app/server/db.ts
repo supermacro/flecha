@@ -1,4 +1,4 @@
-import { JSONObject } from "index"
+import { JSONObject } from "../../../src"
 import { okAsync, ResultAsync } from "neverthrow"
 
 export interface Todo extends JSONObject {

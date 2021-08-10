@@ -18,7 +18,6 @@ const findTodo = (todoId: number) =>
     routeError.other('Unkown')
   )
 
-
 export const getTodo = Route.get(getTodoPath, ({ pathParams }) =>
   findTodo(
     pathParams.todoId
