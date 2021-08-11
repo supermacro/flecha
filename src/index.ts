@@ -7,7 +7,7 @@ import {
   UrlPathParts,
 } from './url-path-parsers'
 import { z, ZodType } from 'zod'
-import express, { Express, Request as XRequest, Response as XResponse } from 'express'
+import express, { Request as XRequest, Response as XResponse } from 'express'
 import { Newtype, iso } from 'newtype-ts'
 
 
@@ -346,11 +346,6 @@ export const Route = {
 class Flecha_<R extends Route<any>> {
   private routes: R[]
 
-  // Flecha can be plugged into an existing
-  // "host" express application
-  private expressAppHost: Express | undefined
-
-
   constructor(newRoutes: R[]) {
     this.routes = newRoutes
   }
@@ -362,26 +357,16 @@ class Flecha_<R extends Route<any>> {
     ])
   }
 
-  withExpressApp(app: Express) {
-    this.expressAppHost = app
-  }
-
   listen(
     port: number,
     cb: () => void,
   ) {
-    const expressApp = this.expressAppHost
-      ? this.expressAppHost
-      : express()
-
-    console.log('> Setting up routes: ')
+    const expressApp = express()
 
     const isoRoute = iso<Route<any>>()
 
     for (const route of this.routes) {
       const { method, rawPath, handler } = isoRoute.unwrap(route)
-
-      console.log('Route: ' + method.toUpperCase() + ' ' + rawPath)
 
       const shouldSkipJsonParsing = ['get', 'delete'].includes(method)
 
@@ -390,12 +375,6 @@ class Flecha_<R extends Route<any>> {
       } else {
         expressApp[method](rawPath, express.json(), handler)
       }
-    }
-
-    if (this.expressAppHost) {
-      // it's the responsibility of the "host" express app
-      // to bind to a port in this case
-      return
     }
 
     expressApp.listen(port, cb)
