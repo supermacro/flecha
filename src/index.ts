@@ -163,10 +163,12 @@ const mapRouteError = (err: RouteError): RouteErrorHttpResponse => {
 
 
 
-export const noBody = (): Decoder<void> => z.void()
+export const noBody = () => z.void()
 
 
 
+const isEmptyObject = <T extends Record<string, any>>(obj: T): boolean =>
+  Object.keys(obj).length === 0
 
 
 
@@ -260,7 +262,11 @@ const route = (method: Method) =>
       rawPath: getRawPathFromUrlPathParts(urlPathParser.path),
 
       handler: (req: XRequest, res: XResponse) => {
-        const requestBodyDecodeResult = bodyParser.safeParse(req.body)
+        const requestBody = isEmptyObject(req.body)
+          ? undefined
+          : req.body
+
+        const requestBodyDecodeResult = bodyParser.safeParse(requestBody)
 
         if (requestBodyDecodeResult.success === false) {
           res.status(400).json({
