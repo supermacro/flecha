@@ -163,7 +163,8 @@ const mapRouteError = (err: RouteError): RouteErrorHttpResponse => {
 
 
 
-export const noBody = () => z.void()
+export const noBody = (): Decoder<void> => z.void()
+
 
 
 
