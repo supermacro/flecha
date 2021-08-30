@@ -35,6 +35,7 @@ export {
   fromSafePromise
 } from 'neverthrow'
 export const parser = z
+export { infer } from 'zod'
 ////////////////////////////////////////////////
 
 
@@ -202,11 +203,33 @@ type RouteResponses<T> = T extends Route<infer U> ? U : never
 
 
 
+type RawHeaders = XRequest['headers']
+
+type Headers = Record<string, string | undefined>
+
+const rawHeadersIntoSimpleHeaders = (rawHeaders: RawHeaders): Headers => 
+  Object
+    .entries(rawHeaders)
+    .reduce((simpleHeaders, [ headerName, headerValue ]) => {
+      if (
+        typeof headerValue !== 'string' ||
+        headerValue !== undefined
+      ) {
+        return simpleHeaders
+      }
+
+      return {
+        ...simpleHeaders,
+        [headerName]: headerValue,
+      }
+    }, {} as Headers)
+
 
 
 interface RequestData<P, B = null> {
   body: B
   pathParams: P,
+  headers: Headers
   // request: FlechaRequest <-- TODO
   // user: UserToken  <-- TODO
   // utils: Utils <-- TODO
@@ -295,6 +318,7 @@ const route = (method: Method) =>
         const handlerResult = handler({
           body: requestBodyDecodeResult.data,
           pathParams,
+          headers: rawHeadersIntoSimpleHeaders(req.headers),
         })
 
         handleHandlerResult(handlerResult, res)
@@ -332,6 +356,7 @@ const simpleRoute = (method: Method) =>
         const handlerResult = handler({
           body: undefined,
           pathParams,
+          headers: rawHeadersIntoSimpleHeaders(req.headers),
         })
 
         handleHandlerResult(handlerResult, res)
