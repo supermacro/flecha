@@ -40,8 +40,9 @@ The road to 1.0
   - [ ] `POST` todo
   - [ ] `DELETE` todo
   - [x] write to db
-- [ ] Re-export zod parsers and tie to a specific version / tag
-- [ ] Re-export neverthrow and tie to a specific version / tag
+- [x] Re-export zod parsers and tie to a specific version / tag
+  - [x] re-export zod's `infer` type
+- [x] Re-export neverthrow and tie to a specific version / tag
 - [ ] Better error messages for parsing errors
     - Currently I'm just returning the raw Zod error
 
