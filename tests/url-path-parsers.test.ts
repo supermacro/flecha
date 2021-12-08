@@ -1,4 +1,25 @@
 import { path, int, str, parseUrlPath } from '../src/url-path-parsers'
+import { _rawHeadersIntoSimpleHeaders } from '../src/index'
+import { IncomingHttpHeaders } from 'http'
+
+describe('Headers conversion', () => {
+  it('Strips out non-string header values', () => {
+    const simpleHeaders: IncomingHttpHeaders = {
+      'access-control-max-age': '213',
+      'accept-patch': 'yes',
+    }
+
+    const headers: IncomingHttpHeaders = {
+      complex: ['hi', 'hello',],
+      ...simpleHeaders,
+    }
+
+    const filtered = _rawHeadersIntoSimpleHeaders(headers)
+
+    expect(filtered).toEqual(simpleHeaders)
+  })
+})
+
 
 describe('Url Parsing Logic (pathParams)', () => {
   describe('Success cases', () => {

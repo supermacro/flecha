@@ -207,14 +207,13 @@ type RawHeaders = XRequest['headers']
 
 type Headers = Record<string, string | undefined>
 
-const rawHeadersIntoSimpleHeaders = (rawHeaders: RawHeaders): Headers => 
+/* Being exported for testing purposes only
+ */
+export const _rawHeadersIntoSimpleHeaders = (rawHeaders: RawHeaders): Headers => 
   Object
     .entries(rawHeaders)
     .reduce((simpleHeaders, [ headerName, headerValue ]) => {
-      if (
-        typeof headerValue !== 'string' ||
-        headerValue !== undefined
-      ) {
+      if (typeof headerValue !== 'string') {
         return simpleHeaders
       }
 
@@ -318,7 +317,7 @@ const route = (method: Method) =>
         const handlerResult = handler({
           body: requestBodyDecodeResult.data,
           pathParams,
-          headers: rawHeadersIntoSimpleHeaders(req.headers),
+          headers: _rawHeadersIntoSimpleHeaders(req.headers),
         })
 
         handleHandlerResult(handlerResult, res)
@@ -356,7 +355,7 @@ const simpleRoute = (method: Method) =>
         const handlerResult = handler({
           body: undefined,
           pathParams,
-          headers: rawHeadersIntoSimpleHeaders(req.headers),
+          headers: _rawHeadersIntoSimpleHeaders(req.headers),
         })
 
         handleHandlerResult(handlerResult, res)
