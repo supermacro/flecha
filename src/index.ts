@@ -9,6 +9,7 @@ import {
 import { z, ZodType } from 'zod'
 import express, { Request as XRequest, Response as XResponse } from 'express'
 import { Newtype, iso } from 'newtype-ts'
+import { OptionsJson } from 'body-parser'
 
 
 ///////////////////////////////////////////////////////////////////////
@@ -51,6 +52,22 @@ type Method
 
 
 type Decoder<T> = ZodType<T>
+
+
+
+
+interface RequestWithRawBody extends XRequest {
+  _flecha_rawBody: Buffer
+}
+
+/* Hack to get the unencoded request body buffer appended to
+ * the expressjs body
+ */
+const addRawRequestBodyHack: OptionsJson = {
+  verify: (req, _res, buf, _encoding) => {
+    (req as RequestWithRawBody)._flecha_rawBody= buf
+  }
+}
 
 type Handler = (req: XRequest, res: XResponse) => void
 
@@ -227,6 +244,7 @@ export const _rawHeadersIntoSimpleHeaders = (rawHeaders: RawHeaders): Headers =>
 
 interface RequestData<P, B = null> {
   body: B
+  rawBody: Buffer
   pathParams: P,
   headers: Headers
   // request: FlechaRequest <-- TODO
@@ -316,6 +334,7 @@ const route = (method: Method) =>
 
         const handlerResult = handler({
           body: requestBodyDecodeResult.data,
+          rawBody: (req as RequestWithRawBody)._flecha_rawBody,
           pathParams,
           headers: _rawHeadersIntoSimpleHeaders(req.headers),
         })
@@ -354,6 +373,7 @@ const simpleRoute = (method: Method) =>
 
         const handlerResult = handler({
           body: undefined,
+          rawBody: Buffer.from(''),
           pathParams,
           headers: _rawHeadersIntoSimpleHeaders(req.headers),
         })
@@ -370,7 +390,6 @@ export const Route = {
   post: route('post'),
   delete: simpleRoute('delete'),
 }
-
 
 
 
@@ -404,7 +423,7 @@ class Flecha_<R extends Route<any>> {
       if (shouldSkipJsonParsing) {
         expressApp[method](rawPath, handler)
       } else {
-        expressApp[method](rawPath, express.json(), handler)
+        expressApp[method](rawPath, express.json(addRawRequestBodyHack), handler)
       }
     }
 
