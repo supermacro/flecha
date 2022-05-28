@@ -1,6 +1,6 @@
 {
   "name": "flecha",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Opinionated, functional and typesafe ✨ HTTP server",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
