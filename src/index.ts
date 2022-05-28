@@ -1,5 +1,5 @@
 import { ResultAsync } from 'neverthrow'
-import { RouteError } from './errors'
+import routeError, { RouteError } from './errors'
 import {
   getRawPathFromUrlPathParts,
   GetParsedParams,
@@ -16,6 +16,7 @@ import { OptionsJson } from 'body-parser'
 ///////////////////////////////////////////////////////////////////////
 //     Re-Exports
 //
+export { routeError }
 export { path, int, str } from './url-path-parsers'
 export {
   ok,
