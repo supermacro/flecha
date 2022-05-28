@@ -47,12 +47,18 @@ The road to 1.0
     - Currently I'm just returning the raw Zod error
 
 
+## OpenAPI Spec Generation
+
+- How do you enforce versioning of an API?
+    - Would be nice if we could infer changes to an API and then update the OpenAPI document version ... `info.version` specifically
+
 
 ## Ideas:
 
 - Partial type arguments one day: https://github.com/Microsoft/TypeScript/pull/26349
 - Host on [fly.io](https://fly.io)
-
+- Add example that uses middleware
+    - maybe an example with JWT middleware
 
 ## Shoutout / Inspiration:
 
