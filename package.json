@@ -6,6 +6,7 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "rm -rf ./dist && tsc",
+    "build-cli": "rm -rf ./cli-dist && tsc -p ./flecha-cli/tsconfig.json",
     "watch": "tsc --noEmit --watch -p tsconfig.json",
     "test": "jest"
   },

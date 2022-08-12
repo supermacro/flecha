@@ -42,6 +42,18 @@ export { infer } from 'zod'
 
 
 
+
+
+import { path, int } from 'url-path-parsers'
+
+const test = path([ 'todos', int('todoId') ] as const)
+
+type Indirection<U extends UrlPathParts> = GetParsedParams<U>
+
+type Yo = Indirection<typeof test>
+
+
+
 type Method
   = 'get'
   | 'put'

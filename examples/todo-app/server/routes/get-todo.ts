@@ -8,6 +8,7 @@ import * as routeError from '../../../../src/errors'
 
 import { todoModel } from '../db'
 
+// /todos/:todoId
 const getTodoPath = path([ 'todos', int('todoId') ])
 
 const findTodo = (todoId: number) =>

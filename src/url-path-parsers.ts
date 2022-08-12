@@ -9,7 +9,7 @@ type UnionToIntersection<U> =
     : never
 
 
-type NonEmptyArray<T> = [T, ...T[]]
+type NonEmptyArray<T> = readonly [T, ...T[]]
 
 
 type PathParseError = 'path_parse_error'

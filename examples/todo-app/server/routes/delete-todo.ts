@@ -3,12 +3,15 @@ import {
   int,
   path,
   Route,
-} from '../../../../src/index'
-import * as routeError from '../../../../src/errors'
+  routeError,
+} from 'flecha'
 
 import { todoModel } from '../db'
 
-const deleteTodoPath = path([ 'todos', int('todoId') ])
+
+const a = [ 'todos', int('todoId') ] as const
+
+const deleteTodoPath = path(a)
 
 export const deleteTodo = Route.delete(deleteTodoPath, ({ pathParams }) =>
   todoModel.delete({

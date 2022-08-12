@@ -1,8 +1,8 @@
 import {
   path,
   Route,
-} from '../../../../src/index'
-import * as routeError from '../../../../src/errors'
+  routeError,
+} from 'flecha'
 
 import { todoModel } from '../db'
 

@@ -1,14 +1,14 @@
-import { z } from 'zod'
 import {
   path,
   Route,
-} from '../../../../src/index'
-import * as routeError from '../../../../src/errors'
+  routeError,
+  parser,
+} from 'flecha'
 
 import { todoModel } from '../db'
 
-const todoDataParser = z.object({
-  title: z.string()
+const todoDataParser = parser.object({
+  title: parser.string()
 })
 
 export const createTodo = Route.post(
