@@ -63,4 +63,7 @@ The road to 1.0
 ## Shoutout / Inspiration:
 
 https://github.com/akheron/typera
+
 https://github.com/lukeautry/tsoa
+
+https://github.com/withtyped/withtyped
